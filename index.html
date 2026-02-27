@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Golf Trip Bets</title>
+  <style>
+    :root { --bg:#0b0f14; --card:#121826; --muted:#8aa0b5; --text:#e8f0f7; --line:#233041; --good:#6ee7b7; --bad:#fca5a5; }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    header{padding:20px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:linear-gradient(180deg,rgba(11,15,20,0.95),rgba(11,15,20,0.85));backdrop-filter: blur(8px);z-index:5}
+    h1{margin:0 0 4px;font-size:18px}
+    .sub{color:var(--muted);font-size:12px}
+    main{padding:16px;max-width:1100px;margin:0 auto}
+    .grid{display:grid;gap:12px}
+    @media(min-width:980px){ .grid{grid-template-columns: 1.1fr 0.9fr} }
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .row > *{flex:0 0 auto}
+    label{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:12px}
+    input, select, button, textarea{
+      background:#0e1420;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 10px;font:inherit
+    }
+    input[type="number"]{width:120px}
+    input[type="text"]{width:220px}
+    button{cursor:pointer}
+    button.primary{background:#1a2a44;border-color:#2b4163}
+    button.danger{background:#3a0f16;border-color:#5a1a26}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+    table{width:100%;border-collapse:collapse;overflow:hidden;border-radius:12px;border:1px solid var(--line)}
+    th,td{padding:10px 10px;border-bottom:1px solid var(--line);text-align:left}
+    th{color:var(--muted);font-weight:600;background:#0e1420}
+    tr:last-child td{border-bottom:0}
+    .pill{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);font-size:12px}
+    .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .kpi .box{background:#0e1420;border:1px solid var(--line);border-radius:12px;padding:10px}
+    .kpi .val{font-size:16px;font-weight:700}
+    .kpi .lbl{color:var(--muted);font-size:12px;margin-top:2px}
+    .good{color:var(--good)}
+    .bad{color:var(--bad)}
+    .small{font-size:12px;color:var(--muted)}
+    details > summary{cursor:pointer;color:var(--muted)}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  </style>
+</head>
+<body>
+<header>
+  <h1>Golf Trip Bets</h1>
+  <div class="sub">
+    Stroke play (totals only) • Individual + Team net leaderboards • Team bet: $20/round (A) • Skins: $10/round split
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+    <section class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <div class="pill">Players locked</div>
+          <div class="small" style="margin-top:6px">
+            Net = Gross − Handicap 
+          </div>
+        </div>
+        <div class="row">
+          <button class="primary" id="btnAddRound">+ Add Round</button>
+          <button id="btnExport">Export JSON</button>
+          <button id="btnImport">Import JSON</button>
+          <button class="danger" id="btnReset">Reset</button>
+        </div>
+      </div>
+
+      <hr />
+
+      <div id="rounds"></div>
+
+      <details style="margin-top:10px">
+        <summary>Rules used (click)</summary>
+        <div class="small" style="margin-top:10px">
+          <div><b>Team bet (A):</b> winning team = lowest team net for the round. Each losing team pays the winning team <b>$20</b>.
+            We split equally: each player on a losing team pays <b>$10</b>, and each player on the winning team receives <b>$10</b>.
+            Implemented as pairwise transfers: each losing player pays <b>$5</b> to each winning player.</div>
+          <div style="margin-top:8px"><b>Skins (totals-only):</b> “Low Net Skin” per round.
+            Everyone antes <b>$10</b> (pot = $80). Lowest individual net wins; ties split the pot evenly.
+            Net effect: each loser −$10; each winner +(80/numWinners − 10).</div>
+        </div>
+      </details>
+    </section>
+
+    <aside class="card">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="pill">Leaderboards</div>
+          <div class="small" style="margin-top:6px">Totals update as you enter scores.</div>
+        </div>
+        <div class="row">
+          <select id="viewMode">
+            <option value="net">Net (handicap)</option>
+            <option value="gross">Gross</option>
+          </select>
+        </div>
+      </div>
+
+      <hr />
+
+      <div class="kpi">
+        <div class="box">
+          <div class="val" id="kpiRounds">0</div>
+          <div class="lbl">Rounds entered</div>
+        </div>
+        <div class="box">
+          <div class="val" id="kpiTeamBet">$0</div>
+          <div class="lbl">Team bet moved</div>
+        </div>
+        <div class="box">
+          <div class="val" id="kpiSkins">$0</div>
+          <div class="lbl">Skins pots</div>
+        </div>
+      </div>
+
+      <hr />
+
+      <h3 style="margin:0 0 8px;font-size:14px">Individual</h3>
+      <div id="individualBoard"></div>
+
+      <hr />
+
+      <h3 style="margin:0 0 8px;font-size:14px">Teams</h3>
+      <div id="teamBoard"></div>
+
+      <hr />
+
+      <h3 style="margin:0 0 8px;font-size:14px">Net Ledger</h3>
+      <div class="small">Positive = should receive. Negative = owes.</div>
+      <div id="balances" style="margin-top:10px"></div>
+
+      <hr />
+
+      <h3 style="margin:0 0 8px;font-size:14px">Suggested settle-up</h3>
+      <div class="small">Minimal set of payments based on net balances.</div>
+      <div id="settle" style="margin-top:10px"></div>
+
+      <hr />
+
+      <details>
+        <summary>Round-by-round ledger details</summary>
+        <div id="ledgerDetails" style="margin-top:10px"></div>
+      </details>
+    </aside>
+  </div>
+</main>
+
+<script>
+/**
+ * Golf Trip Bets — single-file app
+ * Data stored in localStorage under key "golf_trip_bets_v1".
+ */
+
+const STORAGE_KEY = "golf_trip_bets_v1";
+
+// Locked players + teams (your requested pairings)
+const players = [
+  { id: "bigs",   name: "Bigs",   hcp: +1.0, teamId: "t1" },  // plus handicap
+  { id: "conlan", name: "Conlan", hcp: 14.0, teamId: "t1" },
+  { id: "ryan",   name: "Ryan",   hcp: 13.1, teamId: "t2" },
+  { id: "td",     name: "TD",     hcp: 12.7, teamId: "t2" },
+  { id: "frank",  name: "Frank",  hcp: 10.6, teamId: "t3" },
+  { id: "dom",    name: "Dom",    hcp: 8.6,  teamId: "t3" },
+  { id: "boh",    name: "Boh",    hcp: 6.6,  teamId: "t4" },
+  { id: "ethan",  name: "Ethan",  hcp: 11.1, teamId: "t4" },
+];
+
+const teams = [
+  { id: "t1", name: "Bigs / Conlan", playerIds: ["bigs","conlan"] },
+  { id: "t2", name: "Ryan / TD",     playerIds: ["ryan","td"] },
+  { id: "t3", name: "Frank / Dom",   playerIds: ["frank","dom"] },
+  { id: "t4", name: "Boh / Ethan",   playerIds: ["boh","ethan"] },
+];
+
+// Betting settings
+const SETTINGS = {
+  teamBetPerLosingTeam: 20, // A: each losing team pays $20 to the winning team
+  skinsAnte: 10,            // $10 per player per round, split
+};
+
+function money(n) {
+  const v = Math.round((n + Number.EPSILON) * 100) / 100;
+  return "$" + v.toFixed(2);
+}
+function round1(n){ return Math.round((n + Number.EPSILON) * 10) / 10; }
+
+function getInitialState() {
+  return {
+    rounds: [
+      // example:
+      // { id:"r1", name:"Round 1", date:"2026-03-01", grossByPlayer: { bigs: 72, conlan: 90, ... } }
+    ],
+  };
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return getInitialState();
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.rounds)) return getInitialState();
+    return parsed;
+  } catch {
+    return getInitialState();
+  }
+}
+function saveState(state) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+let state = loadState();
+
+function uid() {
+  return Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
+}
+
+function computeNet(gross, hcp) {
+  // Net = Gross - Handicap (hcp can be positive (e.g. 14) or plus (e.g. +1.0))
+  // For Bigs (+1.0): net = gross - (+1.0) = gross + 1
+  if (gross == null || gross === "" || Number.isNaN(Number(gross))) return null;
+  return Number(gross) - Number(hcp);
+}
+
+function getPlayer(id){ return players.find(p => p.id === id); }
+function getTeam(id){ return teams.find(t => t.id === id); }
+
+function computeAll() {
+  const rounds = state.rounds;
+
+  // Totals per player
+  const totals = Object.fromEntries(players.map(p => [p.id, { gross: 0, net: 0, rounds: 0 }]));
+
+  // Per-round computations for leaderboards + ledger
+  const roundResults = []; // { roundId, teamNet: {t1:..}, winnerTeamId, skinsWinners:[playerId], ledgerTransfers:[{from,to,amt,note}] , skinsNetByPlayer: {id: delta}, teamBetNetByPlayer:{id:delta}}
+
+  let teamBetMoved = 0;
+  let skinsPotTotal = 0;
+
+  for (const r of rounds) {
+    // compute per-player scores
+    const perPlayer = {};
+    for (const p of players) {
+      const gross = r.grossByPlayer?.[p.id];
+      const net = computeNet(gross, p.hcp);
+      perPlayer[p.id] = { gross: (gross==null||gross==="") ? null : Number(gross), net };
+      if (gross!=null && gross!=="" && !Number.isNaN(Number(gross))) {
+        totals[p.id].gross += Number(gross);
+        totals[p.id].net += net;
+        totals[p.id].rounds += 1;
+      }
+    }
+
+    // compute team nets (only if both players have a gross)
+    const teamNet = {};
+    for (const t of teams) {
+      const a = perPlayer[t.playerIds[0]]?.net;
+      const b = perPlayer[t.playerIds[1]]?.net;
+      teamNet[t.id] = (a==null || b==null) ? null : (a + b);
+    }
+
+    // Determine winning team for team bet:
+    // Needs all four teams to have nets; if some missing, skip bet for that round
+    let winnerTeamId = null;
+    const teamNetEntries = Object.entries(teamNet).filter(([,v]) => v!=null);
+    if (teamNetEntries.length === teams.length) {
+      teamNetEntries.sort((a,b)=>a[1]-b[1]);
+      winnerTeamId = teamNetEntries[0][0];
+    }
+
+    // Determine skins winners (lowest individual net). Requires all players to have nets; otherwise skip skins.
+    let skinsWinners = [];
+    const netEntries = players.map(p => [p.id, perPlayer[p.id].net]).filter(([,v]) => v!=null);
+    if (netEntries.length === players.length) {
+      netEntries.sort((a,b)=>a[1]-b[1]);
+      const low = netEntries[0][1];
+      skinsWinners = netEntries.filter(([,v]) => Math.abs(v - low) < 1e-9).map(([id])=>id);
+    }
+
+    // Ledger transfers for this round
+    const transfers = [];
+
+    // TEAM BET (A): each losing team pays winning team $20. Split equally.
+    // Implement as each losing player pays $5 to each winning player (so loser pays $10 total; winner receives $10 total per losing team).
+    const teamBetDelta = Object.fromEntries(players.map(p => [p.id, 0]));
+    if (winnerTeamId) {
+      const winningTeam = getTeam(winnerTeamId);
+      const losingTeams = teams.filter(t => t.id !== winnerTeamId);
+
+      for (const lt of losingTeams) {
+        // each losing team pays $20
+        const perLosingPlayer = SETTINGS.teamBetPerLosingTeam / 2; // $10
+        const perPairTransfer = perLosingPlayer / 2; // $5 to each winning player
+
+        for (const loserPid of lt.playerIds) {
+          for (const winnerPid of winningTeam.playerIds) {
+            transfers.push({
+              from: loserPid,
+              to: winnerPid,
+              amt: perPairTransfer,
+              note: `${r.name}: Team bet — ${getTeam(lt.id).name} pays ${winningTeam.name}`,
+              kind: "team_bet"
+            });
+          }
+          teamBetDelta[loserPid] -= perLosingPlayer;
+        }
+        for (const winnerPid of winningTeam.playerIds) {
+          teamBetDelta[winnerPid] += perLosingPlayer;
+        }
+        teamBetMoved += SETTINGS.teamBetPerLosingTeam;
+      }
+    }
+
+    // SKINS: everyone antes $10 => pot $80. Lowest net wins; ties split.
+    const skinsDelta = Object.fromEntries(players.map(p => [p.id, 0]));
+    if (skinsWinners.length) {
+      const pot = players.length * SETTINGS.skinsAnte;
+      skinsPotTotal += pot;
+      const share = pot / skinsWinners.length;
+
+      for (const p of players) skinsDelta[p.id] -= SETTINGS.skinsAnte;
+      for (const w of skinsWinners) skinsDelta[w] += share;
+
+      // Convert to transfers to make settlement easier:
+      // We'll distribute from losers to winners proportionally. Easiest: each non-winner pays their $10 equally across winners.
+      // (Winners also "pay" their ante, but we net that out automatically.)
+      const winnersSet = new Set(skinsWinners);
+
+      // Everyone pays their ante; winners receive share. Net per player is skinsDelta[id].
+      // Create transfers from debtors to creditors for this round's skins only.
+      const debtors = players.map(p => ({ id: p.id, amt: -skinsDelta[p.id] })).filter(x => x.amt > 1e-9);
+      const creditors = players.map(p => ({ id: p.id, amt: skinsDelta[p.id] })).filter(x => x.amt > 1e-9);
+
+      // Greedy matching
+      debtors.sort((a,b)=>b.amt-a.amt);
+      creditors.sort((a,b)=>b.amt-a.amt);
+
+      let i=0,j=0;
+      while (i<debtors.length && j<creditors.length) {
+        const d = debtors[i], c = creditors[j];
+        const pay = Math.min(d.amt, c.amt);
+        if (pay > 1e-9) {
+          transfers.push({
+            from: d.id,
+            to: c.id,
+            amt: pay,
+            note: `${r.name}: Skins pot (${money(pot)}) split among ${skinsWinners.length} winner(s)`,
+            kind: "skins"
+          });
+          d.amt -= pay;
+          c.amt -= pay;
+        }
+        if (d.amt <= 1e-9) i++;
+        if (c.amt <= 1e-9) j++;
+      }
+    }
+
+    roundResults.push({
+      roundId: r.id,
+      name: r.name,
+      date: r.date,
+      perPlayer,
+      teamNet,
+      winnerTeamId,
+      skinsWinners,
+      transfers,
+      skinsDelta,
+      teamBetDelta,
+    });
+  }
+
+  // Build individual leaderboard totals
+  const individual = players.map(p => {
+    const t = totals[p.id];
+    return {
+      id: p.id,
+      name: p.name,
+      team: getTeam(p.teamId).name,
+      hcp: p.hcp,
+      rounds: t.rounds,
+      gross: t.rounds ? t.gross : null,
+      net: t.rounds ? t.net : null,
+    };
+  });
+
+  // Build team leaderboard totals (sum of player totals)
+  const teamTotals = teams.map(t => {
+    const pA = totals[t.playerIds[0]];
+    const pB = totals[t.playerIds[1]];
+    const roundsA = pA.rounds, roundsB = pB.rounds;
+    // We'll show totals only for rounds where both players entered (use min rounds as "team rounds")
+    // and sum their totals as-is (works if you enter all players each round).
+    const teamRounds = Math.min(roundsA, roundsB);
+    return {
+      id: t.id,
+      name: t.name,
+      rounds: teamRounds,
+      gross: (teamRounds ? (pA.gross + pB.gross) : null),
+      net:   (teamRounds ? (pA.net + pB.net) : null),
+    };
+  });
+
+  // Aggregate balances from all transfers
+  const balance = Object.fromEntries(players.map(p => [p.id, 0]));
+  for (const rr of roundResults) {
+    for (const tr of rr.transfers) {
+      balance[tr.from] -= tr.amt;
+      balance[tr.to] += tr.amt;
+    }
+  }
+
+  return { individual, teamTotals, roundResults, balance, teamBetMoved, skinsPotTotal };
+}
+
+function settleUp(balance) {
+  // Returns transfers to settle: [{from,to,amt}]
+  const debtors = [];
+  const creditors = [];
+  for (const p of players) {
+    const b = Math.round((balance[p.id] + Number.EPSILON) * 100) / 100;
+    if (b < -0.009) debtors.push({ id: p.id, amt: -b });
+    if (b >  0.009) creditors.push({ id: p.id, amt: b });
+  }
+  debtors.sort((a,b)=>b.amt-a.amt);
+  creditors.sort((a,b)=>b.amt-a.amt);
+
+  const out = [];
+  let i=0,j=0;
+  while (i<debtors.length && j<creditors.length) {
+    const d = debtors[i], c = creditors[j];
+    const pay = Math.min(d.amt, c.amt);
+    if (pay > 0.009) {
+      out.push({ from: d.id, to: c.id, amt: pay });
+      d.amt -= pay;
+      c.amt -= pay;
+    }
+    if (d.amt <= 0.009) i++;
+    if (c.amt <= 0.009) j++;
+  }
+  return out;
+}
+
+function renderRounds() {
+  const el = document.getElementById("rounds");
+  el.innerHTML = "";
+
+  if (state.rounds.length === 0) {
+    el.innerHTML = `<div class="small">No rounds yet. Click <b>+ Add Round</b> to start.</div>`;
+    return;
+  }
+
+  state.rounds.forEach((r, idx) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.style.marginBottom = "12px";
+
+    const header = document.createElement("div");
+    header.className = "row";
+    header.style.justifyContent = "space-between";
+    header.innerHTML = `
+      <div>
+        <div style="font-weight:700">${r.name || ("Round " + (idx+1))}</div>
+        <div class="small">${r.date ? ("Date: " + r.date) : "No date set"}</div>
+      </div>
+      <div class="row">
+        <button class="danger" data-del="${r.id}">Delete</button>
+      </div>
+    `;
+    card.appendChild(header);
+
+    const formRow = document.createElement("div");
+    formRow.className = "row";
+    formRow.style.marginTop = "12px";
+    formRow.innerHTML = `
+      <label>Round name
+        <input type="text" value="${escapeHtml(r.name||"")}" data-rname="${r.id}" placeholder="e.g., Pine Valley" />
+      </label>
+      <label>Date
+        <input type="text" value="${escapeHtml(r.date||"")}" data-rdate="${r.id}" placeholder="YYYY-MM-DD" />
+      </label>
+      <div class="small">Enter gross totals for each player:</div>
+    `;
+    card.appendChild(formRow);
+
+    const table = document.createElement("table");
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>Player</th>
+          <th>Team</th>
+          <th class="mono">HCP</th>
+          <th>Gross</th>
+          <th class="mono">Net</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+    const tb = table.querySelector("tbody");
+
+    for (const p of players) {
+      const gross = r.grossByPlayer?.[p.id] ?? "";
+      const net = computeNet(gross, p.hcp);
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${p.name}</td>
+        <td class="small">${getTeam(p.teamId).name}</td>
+        <td class="mono">${p.hcp > 0 ? p.hcp.toFixed(1) : ("+" + Math.abs(p.hcp).toFixed(1))}</td>
+        <td>
+          <input type="number" step="1" min="50" max="150" value="${gross}" data-gross="${r.id}:${p.id}" placeholder="—" />
+        </td>
+        <td class="mono">${net==null ? "—" : round1(net).toFixed(1)}</td>
+      `;
+      tb.appendChild(tr);
+    }
+    card.appendChild(document.createElement("hr"));
+    card.appendChild(table);
+
+    el.appendChild(card);
+  });
+
+  // Wire events
+  el.querySelectorAll("button[data-del]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-del");
+      state.rounds = state.rounds.filter(r => r.id !== id);
+      saveState(state);
+      rerenderAll();
+    });
+  });
+
+  el.querySelectorAll("input[data-rname]").forEach(inp => {
+    inp.addEventListener("input", () => {
+      const id = inp.getAttribute("data-rname");
+      const r = state.rounds.find(x => x.id === id);
+      r.name = inp.value;
+      saveState(state);
+      rerenderAll(false); // don't rebuild all rounds on every keystroke? We'll just update leaderboards
+    });
+  });
+
+  el.querySelectorAll("input[data-rdate]").forEach(inp => {
+    inp.addEventListener("input", () => {
+      const id = inp.getAttribute("data-rdate");
+      const r = state.rounds.find(x => x.id === id);
+      r.date = inp.value;
+      saveState(state);
+      rerenderAll(false);
+    });
+  });
+
+  el.querySelectorAll("input[data-gross]").forEach(inp => {
+    inp.addEventListener("input", () => {
+      const [rid, pid] = inp.getAttribute("data-gross").split(":");
+      const r = state.rounds.find(x => x.id === rid);
+      r.grossByPlayer = r.grossByPlayer || {};
+      const v = inp.value;
+      r.grossByPlayer[pid] = v === "" ? "" : Number(v);
+      saveState(state);
+      rerenderAll(); // need to recompute nets in the table too
+    });
+  });
+}
+
+function renderLeaderboards() {
+  const mode = document.getElementById("viewMode").value;
+  const { individual, teamTotals, roundResults, balance, teamBetMoved, skinsPotTotal } = computeAll();
+
+  // KPIs
+  document.getElementById("kpiRounds").textContent = state.rounds.length.toString();
+  document.getElementById("kpiTeamBet").textContent = money(teamBetMoved);
+  document.getElementById("kpiSkins").textContent = money(skinsPotTotal);
+
+  // Individual board
+  const ind = [...individual].filter(x => x.rounds>0);
+  ind.sort((a,b)=>{
+    const av = (mode==="gross" ? a.gross : a.net);
+    const bv = (mode==="gross" ? b.gross : b.net);
+    if (av==null && bv==null) return 0;
+    if (av==null) return 1;
+    if (bv==null) return -1;
+    return av - bv;
+  });
+
+  document.getElementById("individualBoard").innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Player</th><th class="mono">HCP</th><th>Rounds</th>
+          <th>${mode==="gross" ? "Gross" : "Net"}</th>
+          <th class="small">${mode==="gross" ? "Net" : "Gross"}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${players.map(p => p.id).map((pid, i)=>null).join("")}
+        ${ind.map((x,i)=>`
+          <tr>
+            <td>${i+1}</td>
+            <td>${x.name} <span class="small">(${x.team})</span></td>
+            <td class="mono">${x.hcp>0 ? x.hcp.toFixed(1) : ("+"+Math.abs(x.hcp).toFixed(1))}</td>
+            <td>${x.rounds}</td>
+            <td class="mono">${(mode==="gross" ? x.gross : x.net).toFixed(1)}</td>
+            <td class="small mono">${(mode==="gross" ? x.net : x.gross).toFixed(1)}</td>
+          </tr>
+        `).join("")}
+        ${ind.length===0 ? `<tr><td colspan="6" class="small">Enter at least one round of scores to see standings.</td></tr>` : ""}
+      </tbody>
+    </table>
+  `;
+
+  // Team board
+  const teamRows = [...teamTotals].filter(x => x.rounds>0);
+  teamRows.sort((a,b)=>{
+    const av = (mode==="gross" ? a.gross : a.net);
+    const bv = (mode==="gross" ? b.gross : b.net);
+    if (av==null && bv==null) return 0;
+    if (av==null) return 1;
+    if (bv==null) return -1;
+    return av - bv;
+  });
+
+  document.getElementById("teamBoard").innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Team</th><th>Rounds</th>
+          <th>${mode==="gross" ? "Gross" : "Net"}</th>
+          <th class="small">${mode==="gross" ? "Net" : "Gross"}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${teamRows.map((x,i)=>`
+          <tr>
+            <td>${i+1}</td>
+            <td>${x.name}</td>
+            <td>${x.rounds}</td>
+            <td class="mono">${(mode==="gross" ? x.gross : x.net).toFixed(1)}</td>
+            <td class="small mono">${(mode==="gross" ? x.net : x.gross).toFixed(1)}</td>
+          </tr>
+        `).join("")}
+        ${teamRows.length===0 ? `<tr><td colspan="5" class="small">Enter at least one round of scores to see team standings.</td></tr>` : ""}
+      </tbody>
+    </table>
+  `;
+
+  // Balances
+  const balRows = players.map(p => ({ id: p.id, name: p.name, team: getTeam(p.teamId).name, bal: balance[p.id] }))
+    .sort((a,b)=>b.bal-a.bal);
+
+  document.getElementById("balances").innerHTML = `
+    <table>
+      <thead>
+        <tr><th>Player</th><th>Team</th><th>Balance</th></tr>
+      </thead>
+      <tbody>
+        ${balRows.map(x=>`
+          <tr>
+            <td>${x.name}</td>
+            <td class="small">${x.team}</td>
+            <td class="${x.bal>=0 ? "good" : "bad"} mono">${money(x.bal)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+
+  // Suggested settle up
+  const settle = settleUp(balance);
+  document.getElementById("settle").innerHTML = settle.length ? `
+    <table>
+      <thead><tr><th>From</th><th>To</th><th>Amount</th></tr></thead>
+      <tbody>
+        ${settle.map(x=>`
+          <tr>
+            <td>${getPlayer(x.from).name}</td>
+            <td>${getPlayer(x.to).name}</td>
+            <td class="mono">${money(x.amt)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  ` : `<div class="small">No payments needed yet.</div>`;
+
+  // Ledger details by round
+  const ld = document.getElementById("ledgerDetails");
+  if (roundResults.length === 0) {
+    ld.innerHTML = `<div class="small">No rounds yet.</div>`;
+  } else {
+    ld.innerHTML = roundResults.map(rr => {
+      const wTeam = rr.winnerTeamId ? getTeam(rr.winnerTeamId).name : "—";
+      const skins = rr.skinsWinners.length ? rr.skinsWinners.map(id=>getPlayer(id).name).join(", ") : "—";
+      const transfers = rr.transfers.length ? rr.transfers : [];
+      return `
+        <div class="card" style="margin-bottom:10px">
+          <div style="font-weight:700">${escapeHtml(rr.name)}</div>
+          <div class="small">${rr.date ? ("Date: "+escapeHtml(rr.date)) : "No date"}</div>
+          <div class="small" style="margin-top:8px">
+            <b>Winning team:</b> ${escapeHtml(wTeam)}<br/>
+            <b>Skins winners (low net):</b> ${escapeHtml(skins)}
+          </div>
+          <div style="margin-top:10px">
+            ${renderRoundMiniTable(rr)}
+          </div>
+          <div style="margin-top:10px">
+            <div class="small"><b>Ledger transfers</b></div>
+            ${transfers.length ? `
+              <table>
+                <thead><tr><th>From</th><th>To</th><th>Amount</th><th>Note</th></tr></thead>
+                <tbody>
+                  ${transfers.map(t=>`
+                    <tr>
+                      <td>${getPlayer(t.from).name}</td>
+                      <td>${getPlayer(t.to).name}</td>
+                      <td class="mono">${money(t.amt)}</td>
+                      <td class="small">${escapeHtml(t.note)}</td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            ` : `<div class="small">No bets computed for this round yet (missing scores).</div>`}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+}
+
+function renderRoundMiniTable(rr) {
+  // quick team net summary table
+  const rows = teams.map(t => {
+    const v = rr.teamNet[t.id];
+    return { team: t.name, net: v };
+  }).sort((a,b)=>{
+    if (a.net==null && b.net==null) return 0;
+    if (a.net==null) return 1;
+    if (b.net==null) return -1;
+    return a.net - b.net;
+  });
+
+  return `
+    <table>
+      <thead><tr><th>Team</th><th class="mono">Team Net</th></tr></thead>
+      <tbody>
+        ${rows.map(x=>`
+          <tr>
+            <td>${escapeHtml(x.team)}</td>
+            <td class="mono">${x.net==null ? "—" : round1(x.net).toFixed(1)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function rerenderAll(rebuildRounds = true) {
+  if (rebuildRounds) renderRounds();
+  renderLeaderboards();
+}
+
+// UI actions
+document.getElementById("btnAddRound").addEventListener("click", () => {
+  const n = state.rounds.length + 1;
+  state.rounds.push({ id: uid(), name: `Round ${n}`, date: "", grossByPlayer: {} });
+  saveState(state);
+  rerenderAll();
+});
+
+document.getElementById("viewMode").addEventListener("change", () => rerenderAll(false));
+
+document.getElementById("btnReset").addEventListener("click", () => {
+  if (!confirm("Reset all rounds and scores?")) return;
+  state = getInitialState();
+  saveState(state);
+  rerenderAll();
+});
+
+document.getElementById("btnExport").addEventListener("click", async () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "golf-trip-bets.json";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById("btnImport").addEventListener("click", async () => {
+  const inp = document.createElement("input");
+  inp.type = "file";
+  inp.accept = "application/json";
+  inp.onchange = async () => {
+    const file = inp.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    try {
+      const parsed = JSON.parse(text);
+      if (!parsed || !Array.isArray(parsed.rounds)) throw new Error("Invalid file");
+      state = parsed;
+      saveState(state);
+      rerenderAll();
+    } catch (e) {
+      alert("Could not import JSON: " + e.message);
+    }
+  };
+  inp.click();
+});
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[c]));
+}
+
+// Initial render
+rerenderAll();
+</script>
+</body>
+</html>
