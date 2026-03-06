@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Golf Trip Bets — Pixel Leaderboard</title>
 
-<!-- Pixel-ish font (works great; if offline it falls back cleanly) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
@@ -46,7 +45,6 @@
     overflow-x:hidden;
   }
 
-  /* subtle scanlines */
   body::before{
     content:"";
     position:fixed; inset:0;
@@ -126,7 +124,6 @@
   }
   .panelBody{padding:12px}
 
-  /* Buttons + inputs */
   .actions{display:flex;gap:10px;flex-wrap:wrap}
   .btn{
     font: 10px/1 var(--pix);
@@ -159,7 +156,6 @@
   .hint b{color:var(--gold)}
   .divider{height:1px;background:rgba(49,68,111,.45);margin:12px 0}
 
-  /* Round cards */
   .roundCard{
     border:1px solid rgba(49,68,111,.55);
     background: rgba(11,18,38,.55);
@@ -193,7 +189,6 @@
     outline:none;
     box-shadow: inset 0 0 0 2px rgba(0,0,0,.14);
   }
-  /* iPhone: prevent zoom */
   input, select, button, textarea{font-size:16px}
 
   .scores{
@@ -216,7 +211,6 @@
   .mono{font-family: var(--pix)}
   .right{text-align:right}
 
-  /* Avatar + name */
   .pRow{display:flex; align-items:center; gap:10px; min-width:220px}
   .ava{
     width:38px;height:38px;border-radius:10px;
@@ -230,12 +224,15 @@
   .ava img{width:100%;height:100%;object-fit:cover;image-rendering: pixelated}
   .pName{display:flex;flex-direction:column;gap:2px}
   .pName b{
-    font: 10px/1.2 var(--pix);
+    font: 10px/1.3 var(--pix);
     letter-spacing:.04em;
   }
   .pName span{color:var(--muted);font-size:12px}
+  .hcpTag{
+    color:var(--gold);
+    margin-left:6px;
+  }
 
-  /* Leaderboard */
   .board{
     width:100%;
     border-collapse:separate;
@@ -292,7 +289,6 @@
     font:10px/1 var(--pix);
     color: var(--muted);
   }
-
 </style>
 </head>
 
@@ -332,7 +328,7 @@
         </div>
         <div class="panelBody">
           <div class="hint">
-            <b>Daily publish:</b> enter scores → <b>Export JSON</b> → rename to <b>state.json</b> → upload/replace on host → everyone refreshes (or taps <b>Load Latest</b>).
+            <b>Daily publish:</b> enter scores → <b>Export JSON</b> → upload/replace <b>state.json</b> on your host → everyone refreshes or taps <b>Load Latest</b>.
           </div>
           <div class="divider"></div>
           <div id="rounds"></div>
@@ -386,16 +382,15 @@
 </main>
 
 <script>
-  // ====== CONFIG ======
   const players = [
-    { id:"bigs",   name:"Bigs",   hcp: +1.0, teamId:"t1" },
-    { id:"conlan", name:"Conlan", hcp: 14.0, teamId:"t1" },
-    { id:"ryan",   name:"Ryan",   hcp: 13.1, teamId:"t2" },
-    { id:"td",     name:"TD",     hcp: 12.7, teamId:"t2" },
-    { id:"frank",  name:"Frank",  hcp: 10.6, teamId:"t3" },
-    { id:"dom",    name:"Dom",    hcp:  8.6, teamId:"t3" },
-    { id:"boh",    name:"Boh",    hcp:  6.6, teamId:"t4" },
-    { id:"ethan",  name:"Ethan",  hcp: 11.1, teamId:"t4" },
+    { id:"bigs",   name:"Bigs",   hcp:  0.0, teamId:"t1" },
+    { id:"conlan", name:"Conlan", hcp: 15.0, teamId:"t1" },
+    { id:"ryan",   name:"Ryan",   hcp: 14.1, teamId:"t2" },
+    { id:"td",     name:"TD",     hcp: 13.7, teamId:"t2" },
+    { id:"frank",  name:"Frank",  hcp: 11.6, teamId:"t3" },
+    { id:"dom",    name:"Dom",    hcp:  9.6, teamId:"t3" },
+    { id:"boh",    name:"Boh",    hcp:  7.6, teamId:"t4" },
+    { id:"ethan",  name:"Ethan",  hcp: 12.1, teamId:"t4" },
   ];
 
   const teams = [
@@ -405,21 +400,20 @@
     { id:"t4", name:"Boh / Ethan",   playerIds:["boh","ethan"] },
   ];
 
-  // Optional avatars (put files in /img/)
   const avatarByPlayerId = {
-    bigs:   "img/bigs.jpeg",
-    conlan: "img/conlan.jpeg",
-    ryan:   "img/ryan.jpeg",
-    td:     "img/td.jpeg",
-    frank:  "img/frank.jpeg",
-    dom:    "img/dom.jpeg",
-    boh:    "img/boh.jpeg",
-    ethan:  "img/ethan.jpeg",
+    bigs:   "img/bigs.jpg",
+    conlan: "img/conlan.jpg",
+    ryan:   "img/ryan.jpg",
+    td:     "img/td.jpg",
+    frank:  "img/frank.jpg",
+    dom:    "img/dom.jpg",
+    boh:    "img/boh.jpg",
+    ethan:  "img/ethan.jpg",
   };
 
   const SETTINGS = {
-    teamBetPerLosingTeam: 20, // (A): each losing team pays winning team $20
-    skinsAnte: 10,            // $10 each, split winners
+    teamBetPerLosingTeam: 20,
+    skinsAnte: 10,
   };
 
   let state = { rounds: [] };
@@ -430,21 +424,23 @@
     const v = Math.round((Number(n) + Number.EPSILON) * 100) / 100;
     return "$" + v.toFixed(2);
   }
-  function round1(n){ return Math.round((n + Number.EPSILON) * 10) / 10; }
+
+  function round1(n){
+    return Math.round((n + Number.EPSILON) * 10) / 10;
+  }
 
   function computeNet(gross, hcp){
     if (gross === "" || gross == null || Number.isNaN(Number(gross))) return null;
     return Number(gross) - Number(hcp);
   }
 
-  function getTeam(id){ return teams.find(t=>t.id===id); }
-  function getPlayer(id){ return players.find(p=>p.id===id); }
+  function getTeam(id){ return teams.find(t => t.id === id); }
+  function getPlayer(id){ return players.find(p => p.id === id); }
 
   function setStatus(msg){
     $("statusLine").textContent = msg;
   }
 
-  // ====== DAILY SYNC (Option A) ======
   async function loadLatest(){
     try{
       const res = await fetch("state.json?ts=" + Date.now(), { cache:"no-store" });
@@ -455,7 +451,7 @@
       setStatus("Loaded latest state.json ✔");
       renderAll();
     }catch(e){
-      setStatus("No state.json found yet (that’s fine until day 1). You can start entering rounds, then Export JSON and publish.");
+      setStatus("No state.json found yet. You can start entering rounds, then export and publish.");
       renderAll();
     }
   }
@@ -465,7 +461,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "golf-trip-bets.json";
+    a.download = "state.json";
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -473,39 +469,39 @@
   function clearLocal(){
     state = { rounds: [] };
     renderAll();
-    setStatus("Cleared local state (not the published state.json).");
+    setStatus("Cleared local state.");
   }
 
-  // ====== UI ACTIONS ======
-  function uid(){ return Math.random().toString(16).slice(2) + "_" + Date.now().toString(16); }
+  function uid(){
+    return Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
+  }
 
   function addRound(){
     const n = state.rounds.length + 1;
     state.rounds.push({ id: uid(), name: `ROUND ${n}`, date:"", grossByPlayer:{} });
     renderAll();
-    setStatus("Round added. Enter gross totals, then Export JSON to publish.");
+    setStatus("Round added. Enter scores, then export state.json.");
   }
 
   function updateRoundField(roundId, field, value){
-    const r = state.rounds.find(x=>x.id===roundId);
+    const r = state.rounds.find(x => x.id === roundId);
     r[field] = value;
     renderAll();
   }
 
   function updateGross(roundId, playerId, value){
-    const r = state.rounds.find(x=>x.id===roundId);
+    const r = state.rounds.find(x => x.id === roundId);
     r.grossByPlayer = r.grossByPlayer || {};
     r.grossByPlayer[playerId] = (value === "" ? "" : Number(value));
     renderAll();
   }
 
   function deleteRound(roundId){
-    state.rounds = state.rounds.filter(r=>r.id!==roundId);
+    state.rounds = state.rounds.filter(r => r.id !== roundId);
     renderAll();
     setStatus("Round deleted.");
   }
 
-  // ====== COMPUTE (leaderboards + ledger) ======
   function computeAll(){
     const totals = Object.fromEntries(players.map(p => [p.id, { gross:0, net:0, rounds:0 }]));
     const roundResults = [];
@@ -514,11 +510,13 @@
 
     for(const r of state.rounds){
       const perPlayer = {};
+
       for(const p of players){
         const g = r.grossByPlayer?.[p.id];
         const net = computeNet(g, p.hcp);
-        perPlayer[p.id] = { gross: (g==="" || g==null) ? null : Number(g), net };
-        if(g!=="" && g!=null && !Number.isNaN(Number(g))){
+        perPlayer[p.id] = { gross: (g === "" || g == null) ? null : Number(g), net };
+
+        if(g !== "" && g != null && !Number.isNaN(Number(g))){
           totals[p.id].gross += Number(g);
           totals[p.id].net += net;
           totals[p.id].rounds += 1;
@@ -529,36 +527,31 @@
       for(const t of teams){
         const a = perPlayer[t.playerIds[0]].net;
         const b = perPlayer[t.playerIds[1]].net;
-        teamNet[t.id] = (a==null || b==null) ? null : (a + b);
+        teamNet[t.id] = (a == null || b == null) ? null : (a + b);
       }
 
-      // Winner team (needs all team nets present)
       let winnerTeamId = null;
-      const tn = Object.entries(teamNet).filter(([,v])=>v!=null);
+      const tn = Object.entries(teamNet).filter(([,v]) => v != null);
       if(tn.length === teams.length){
-        tn.sort((x,y)=>x[1]-y[1]);
+        tn.sort((x,y) => x[1] - y[1]);
         winnerTeamId = tn[0][0];
       }
 
-      // Skins winners (lowest individual net; needs all nets present)
       let skinsWinners = [];
-      const nets = players.map(p => [p.id, perPlayer[p.id].net]).filter(([,v])=>v!=null);
+      const nets = players.map(p => [p.id, perPlayer[p.id].net]).filter(([,v]) => v != null);
       if(nets.length === players.length){
-        nets.sort((a,b)=>a[1]-b[1]);
+        nets.sort((a,b) => a[1] - b[1]);
         const low = nets[0][1];
-        skinsWinners = nets.filter(([,v]) => Math.abs(v-low)<1e-9).map(([id])=>id);
+        skinsWinners = nets.filter(([,v]) => Math.abs(v - low) < 1e-9).map(([id]) => id);
       }
 
-      // Transfers
       const transfers = [];
 
-      // Team bet A: each losing team pays winning team $20.
-      // Each losing player pays $5 to each winning player (so $10 total), clean + symmetric.
       if(winnerTeamId){
         const winTeam = getTeam(winnerTeamId);
-        for(const loseTeam of teams.filter(t=>t.id!==winnerTeamId)){
-          const perLosingPlayer = SETTINGS.teamBetPerLosingTeam / 2; // $10
-          const perPair = perLosingPlayer / 2; // $5
+        for(const loseTeam of teams.filter(t => t.id !== winnerTeamId)){
+          const perLosingPlayer = SETTINGS.teamBetPerLosingTeam / 2;
+          const perPair = perLosingPlayer / 2;
           for(const lp of loseTeam.playerIds){
             for(const wp of winTeam.playerIds){
               transfers.push({ from: lp, to: wp, amt: perPair, kind:"team", note:`${r.name}: Team bet` });
@@ -568,55 +561,67 @@
         }
       }
 
-      // Skins: everyone antes $10, pot = 80, split among winners
       if(skinsWinners.length){
         const pot = players.length * SETTINGS.skinsAnte;
         skinsPotTotal += pot;
         const share = pot / skinsWinners.length;
 
-        const delta = Object.fromEntries(players.map(p=>[p.id, -SETTINGS.skinsAnte]));
+        const delta = Object.fromEntries(players.map(p => [p.id, -SETTINGS.skinsAnte]));
         for(const w of skinsWinners) delta[w] += share;
 
-        // Convert to transfers via greedy debtors->creditors
-        const debtors = players.map(p => ({ id:p.id, amt:-delta[p.id] })).filter(x=>x.amt>1e-9);
-        const creditors = players.map(p => ({ id:p.id, amt: delta[p.id] })).filter(x=>x.amt>1e-9);
-        debtors.sort((a,b)=>b.amt-a.amt);
-        creditors.sort((a,b)=>b.amt-a.amt);
+        const debtors = players.map(p => ({ id:p.id, amt:-delta[p.id] })).filter(x => x.amt > 1e-9);
+        const creditors = players.map(p => ({ id:p.id, amt: delta[p.id] })).filter(x => x.amt > 1e-9);
+        debtors.sort((a,b) => b.amt - a.amt);
+        creditors.sort((a,b) => b.amt - a.amt);
 
-        let i=0,j=0;
-        while(i<debtors.length && j<creditors.length){
-          const d=debtors[i], c=creditors[j];
+        let i = 0, j = 0;
+        while(i < debtors.length && j < creditors.length){
+          const d = debtors[i], c = creditors[j];
           const pay = Math.min(d.amt, c.amt);
-          if(pay>1e-9){
-            transfers.push({ from:d.id, to:c.id, amt:pay, kind:"skins", note:`${r.name}: Skins pot ${money(pot)} (${skinsWinners.length} winner(s))` });
-            d.amt -= pay; c.amt -= pay;
+          if(pay > 1e-9){
+            transfers.push({ from:d.id, to:c.id, amt:pay, kind:"skins", note:`${r.name}: Skins pot ${money(pot)}` });
+            d.amt -= pay;
+            c.amt -= pay;
           }
-          if(d.amt<=1e-9) i++;
-          if(c.amt<=1e-9) j++;
+          if(d.amt <= 1e-9) i++;
+          if(c.amt <= 1e-9) j++;
         }
       }
 
       roundResults.push({ roundId:r.id, perPlayer, teamNet, winnerTeamId, skinsWinners, transfers });
     }
 
-    const individual = players.map(p=>{
+    const individual = players.map(p => {
       const t = totals[p.id];
-      return { id:p.id, name:p.name, team:getTeam(p.teamId).name, hcp:p.hcp, rounds:t.rounds, gross:t.gross, net:t.net };
-    }).filter(x=>x.rounds>0);
+      return {
+        id:p.id,
+        name:p.name,
+        team:getTeam(p.teamId).name,
+        hcp:p.hcp,
+        rounds:t.rounds,
+        gross:t.gross,
+        net:t.net
+      };
+    }).filter(x => x.rounds > 0);
 
-    individual.sort((a,b)=>a.net-b.net);
+    individual.sort((a,b) => a.net - b.net);
 
-    const teamTotals = teams.map(t=>{
-      const A = totals[t.playerIds[0]];
-      const B = totals[t.playerIds[1]];
-      const teamRounds = Math.min(A.rounds, B.rounds);
-      return { id:t.id, name:t.name, rounds:teamRounds, gross:(A.gross+B.gross), net:(A.net+B.net) };
-    }).filter(x=>x.rounds>0);
+    const teamTotals = teams.map(t => {
+      const a = totals[t.playerIds[0]];
+      const b = totals[t.playerIds[1]];
+      const teamRounds = Math.min(a.rounds, b.rounds);
+      return {
+        id:t.id,
+        name:t.name,
+        rounds:teamRounds,
+        gross:(a.gross + b.gross),
+        net:(a.net + b.net)
+      };
+    }).filter(x => x.rounds > 0);
 
-    teamTotals.sort((a,b)=>a.net-b.net);
+    teamTotals.sort((a,b) => a.net - b.net);
 
-    // Balance from transfers
-    const balance = Object.fromEntries(players.map(p=>[p.id, 0]));
+    const balance = Object.fromEntries(players.map(p => [p.id, 0]));
     for(const rr of roundResults){
       for(const tr of rr.transfers){
         balance[tr.from] -= tr.amt;
@@ -624,35 +629,38 @@
       }
     }
 
-    return { individual, teamTotals, roundResults, balance, skinsPotTotal, teamBetMoved };
+    return { individual, teamTotals, balance, skinsPotTotal, teamBetMoved };
   }
 
   function settleUp(balance){
-    const debtors=[], creditors=[];
-    for(const p of players){
-      const b = Math.round((balance[p.id] + Number.EPSILON)*100)/100;
-      if(b < -0.009) debtors.push({id:p.id, amt:-b});
-      if(b >  0.009) creditors.push({id:p.id, amt:b});
-    }
-    debtors.sort((a,b)=>b.amt-a.amt);
-    creditors.sort((a,b)=>b.amt-a.amt);
+    const debtors = [];
+    const creditors = [];
 
-    const out=[];
-    let i=0,j=0;
-    while(i<debtors.length && j<creditors.length){
-      const d=debtors[i], c=creditors[j];
+    for(const p of players){
+      const b = Math.round((balance[p.id] + Number.EPSILON) * 100) / 100;
+      if(b < -0.009) debtors.push({ id:p.id, amt:-b });
+      if(b > 0.009) creditors.push({ id:p.id, amt:b });
+    }
+
+    debtors.sort((a,b) => b.amt - a.amt);
+    creditors.sort((a,b) => b.amt - a.amt);
+
+    const out = [];
+    let i = 0, j = 0;
+    while(i < debtors.length && j < creditors.length){
+      const d = debtors[i], c = creditors[j];
       const pay = Math.min(d.amt, c.amt);
-      if(pay>0.009){
-        out.push({from:d.id, to:c.id, amt:pay});
-        d.amt -= pay; c.amt -= pay;
+      if(pay > 0.009){
+        out.push({ from:d.id, to:c.id, amt:pay });
+        d.amt -= pay;
+        c.amt -= pay;
       }
-      if(d.amt<=0.009) i++;
-      if(c.amt<=0.009) j++;
+      if(d.amt <= 0.009) i++;
+      if(c.amt <= 0.009) j++;
     }
     return out;
   }
 
-  // ====== RENDER ======
   function avatarHTML(pid){
     const src = avatarByPlayerId[pid];
     if(!src) return `<div class="ava"></div>`;
@@ -661,79 +669,78 @@
 
   function renderRounds(){
     const host = $("rounds");
+
     if(state.rounds.length === 0){
       host.innerHTML = `<div class="hint">No rounds yet. Hit <b>ADD ROUND</b> when day 1 starts.</div>`;
       return;
     }
 
-    host.innerHTML = state.rounds.map((r, idx)=>{
-      return `
-        <div class="roundCard">
-          <div class="roundTop">
-            <div>
-              <div class="roundName">${escapeHtml(r.name || `ROUND ${idx+1}`)}</div>
-              <div class="hint">Enter gross totals for each player.</div>
-            </div>
-            <div class="roundMeta">
-              <div class="field">
-                <span>Round name</span>
-                <input class="in" value="${escapeHtml(r.name||"")}" placeholder="ROUND 1" oninput="updateRoundField('${r.id}','name',this.value)">
-              </div>
-              <div class="field">
-                <span>Date</span>
-                <input class="in" value="${escapeHtml(r.date||"")}" placeholder="YYYY-MM-DD" oninput="updateRoundField('${r.id}','date',this.value)">
-              </div>
-              <button class="btn warn" onclick="deleteRound('${r.id}')">DELETE</button>
-            </div>
+    host.innerHTML = state.rounds.map((r, idx) => `
+      <div class="roundCard">
+        <div class="roundTop">
+          <div>
+            <div class="roundName">${escapeHtml(r.name || `ROUND ${idx+1}`)}</div>
+            <div class="hint">Enter gross totals for each player.</div>
           </div>
-
-          <div class="panelBody" style="padding:0">
-            <table class="scores">
-              <thead>
-                <tr>
-                  <th>PLAYER</th>
-                  <th>TEAM</th>
-                  <th class="right">HCP</th>
-                  <th class="right">GROSS</th>
-                  <th class="right">NET</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${players.map(p=>{
-                  const g = r.grossByPlayer?.[p.id] ?? "";
-                  const net = computeNet(g, p.hcp);
-                  const hcpDisp = p.hcp > 0 ? p.hcp.toFixed(1) : ("+" + Math.abs(p.hcp).toFixed(1));
-                  return `
-                    <tr>
-                      <td>
-                        <div class="pRow">
-                          ${avatarHTML(p.id)}
-                          <div class="pName">
-                            <b>${escapeHtml(p.name)}</b>
-                            <span>${escapeHtml(getTeam(p.teamId).name)}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td class="hint">${escapeHtml(getTeam(p.teamId).name)}</td>
-                      <td class="right mono">${hcpDisp}</td>
-                      <td class="right">
-                        <input class="in" style="width:120px;text-align:right"
-                          type="number" min="50" max="150" step="1"
-                          value="${g}"
-                          placeholder="—"
-                          oninput="updateGross('${r.id}','${p.id}',this.value)"
-                        >
-                      </td>
-                      <td class="right mono">${net==null ? "—" : round1(net).toFixed(1)}</td>
-                    </tr>
-                  `;
-                }).join("")}
-              </tbody>
-            </table>
+          <div class="roundMeta">
+            <div class="field">
+              <span>Round name</span>
+              <input class="in" value="${escapeHtml(r.name || "")}" placeholder="ROUND 1" oninput="updateRoundField('${r.id}','name',this.value)">
+            </div>
+            <div class="field">
+              <span>Date</span>
+              <input class="in" value="${escapeHtml(r.date || "")}" placeholder="YYYY-MM-DD" oninput="updateRoundField('${r.id}','date',this.value)">
+            </div>
+            <button class="btn warn" onclick="deleteRound('${r.id}')">DELETE</button>
           </div>
         </div>
-      `;
-    }).join("");
+
+        <div class="panelBody" style="padding:0">
+          <table class="scores">
+            <thead>
+              <tr>
+                <th>PLAYER</th>
+                <th>TEAM</th>
+                <th class="right">HCP</th>
+                <th class="right">GROSS</th>
+                <th class="right">NET</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${players.map(p => {
+                const g = r.grossByPlayer?.[p.id] ?? "";
+                const net = computeNet(g, p.hcp);
+                const hcpDisp = p.hcp.toFixed(1);
+                return `
+                  <tr>
+                    <td>
+                      <div class="pRow">
+                        ${avatarHTML(p.id)}
+                        <div class="pName">
+                          <b>${escapeHtml(p.name)} <span class="hcpTag">(${p.hcp.toFixed(1)})</span></b>
+                          <span>${escapeHtml(getTeam(p.teamId).name)}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="hint">${escapeHtml(getTeam(p.teamId).name)}</td>
+                    <td class="right mono">${hcpDisp}</td>
+                    <td class="right">
+                      <input class="in" style="width:120px;text-align:right"
+                        type="number" min="50" max="150" step="1"
+                        value="${g}"
+                        placeholder="—"
+                        oninput="updateGross('${r.id}','${p.id}',this.value)"
+                      >
+                    </td>
+                    <td class="right mono">${net == null ? "—" : round1(net).toFixed(1)}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `).join("");
   }
 
   function renderBoards(){
@@ -743,7 +750,6 @@
     $("kpiSkins").textContent = money(skinsPotTotal);
     $("kpiTeamBet").textContent = money(teamBetMoved);
 
-    // Individual
     if(individual.length === 0){
       $("individualBoard").innerHTML = `<div class="hint">Post a round to generate standings.</div>`;
     } else {
@@ -755,15 +761,15 @@
             </tr>
           </thead>
           <tbody>
-            ${individual.map((x,i)=>`
+            ${individual.map((x, i) => `
               <tr>
                 <td class="rank">${i+1}</td>
                 <td>
                   <div class="pRow">
                     ${avatarHTML(x.id)}
                     <div class="pName">
-                      <b>${escapeHtml(x.name)}</b>
-                      <span class="hint">HCP ${x.hcp>0?x.hcp.toFixed(1):("+"+Math.abs(x.hcp).toFixed(1))}</span>
+                      <b>${escapeHtml(x.name)} <span class="hcpTag">(${x.hcp.toFixed(1)})</span></b>
+                      <span class="hint">${escapeHtml(x.team)}</span>
                     </div>
                   </div>
                 </td>
@@ -778,7 +784,6 @@
       `;
     }
 
-    // Teams
     if(teamTotals.length === 0){
       $("teamBoard").innerHTML = `<div class="hint">Post a round to generate team standings.</div>`;
     } else {
@@ -790,7 +795,7 @@
             </tr>
           </thead>
           <tbody>
-            ${teamTotals.map((t,i)=>`
+            ${teamTotals.map((t, i) => `
               <tr>
                 <td class="rank">${i+1}</td>
                 <td class="mono">${escapeHtml(t.name)}</td>
@@ -804,38 +809,42 @@
       `;
     }
 
-    // Ledger balances
     const balRows = players.map(p => ({
-      id:p.id, name:p.name, team:getTeam(p.teamId).name, bal:balance[p.id]
-    })).sort((a,b)=>b.bal-a.bal);
+      id:p.id,
+      name:p.name,
+      team:getTeam(p.teamId).name,
+      bal:balance[p.id]
+    })).sort((a,b) => b.bal - a.bal);
 
     $("ledgerBoard").innerHTML = `
       <table class="board">
         <thead><tr><th>PLAYER</th><th>TEAM</th><th class="right">BALANCE</th></tr></thead>
         <tbody>
-          ${balRows.map(r=>`
+          ${balRows.map(r => `
             <tr>
               <td>
                 <div class="pRow">
                   ${avatarHTML(r.id)}
-                  <div class="pName"><b>${escapeHtml(r.name)}</b><span>${escapeHtml(r.team)}</span></div>
+                  <div class="pName">
+                    <b>${escapeHtml(r.name)} <span class="hcpTag">(${getPlayer(r.id).hcp.toFixed(1)})</span></b>
+                    <span>${escapeHtml(r.team)}</span>
+                  </div>
                 </div>
               </td>
               <td class="hint">${escapeHtml(r.team)}</td>
-              <td class="right ${r.bal>=0 ? "pos" : "neg"}">${money(r.bal)}</td>
+              <td class="right ${r.bal >= 0 ? "pos" : "neg"}">${money(r.bal)}</td>
             </tr>
           `).join("")}
         </tbody>
       </table>
     `;
 
-    // Settle-up
     const settle = settleUp(balance);
     $("settleBoard").innerHTML = settle.length ? `
       <table class="board">
         <thead><tr><th>FROM</th><th>TO</th><th class="right">AMOUNT</th></tr></thead>
         <tbody>
-          ${settle.map(s=>`
+          ${settle.map(s => `
             <tr>
               <td class="mono">${escapeHtml(getPlayer(s.from).name)}</td>
               <td class="mono">${escapeHtml(getPlayer(s.to).name)}</td>
@@ -854,22 +863,23 @@
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, c => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      "&":"&amp;",
+      "<":"&lt;",
+      ">":"&gt;",
+      '"':"&quot;",
+      "'":"&#039;"
     }[c]));
   }
 
-  // ====== Hook up buttons ======
   $("btnAddRound").addEventListener("click", addRound);
   $("btnLoadLatest").addEventListener("click", loadLatest);
   $("btnExport").addEventListener("click", exportJSON);
   $("btnClear").addEventListener("click", clearLocal);
 
-  // expose for inline handlers
   window.updateRoundField = updateRoundField;
   window.updateGross = updateGross;
   window.deleteRound = deleteRound;
 
-  // boot
   loadLatest();
 </script>
 </body>
